@@ -5,10 +5,11 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <cstring>
+#include <string>
+#include <iostream>
 
 char msg[256] = "user data\n";
 const char * SHMN = "shm-temp";
-constexpr int PAGE_SIZE = 4096;
 
 size_t send(int & err, int wr, const char * b, size_t k)
 {
@@ -39,33 +40,42 @@ int main()
     assert(!err);
 
     char p[100] = {};
-    err = sprintf(msg, "%d", rd);
+    err = sprintf(p, "%d", rd);
     assert(err > 0);
 
-    execl("child", "clild", msg, NULL);
+    execl("child", "clild", p, NULL);
     assert(0);
   }
+
+  std::string text;
+  std::getline(std::cin, text);
+  assert(text.size());
+
+  int size = text.length();
+  const char * msg = text.c_str();
+
   auto fl = O_RDWR | O_CREAT | O_TRUNC;
   auto mode = S_IRUSR | S_IWUSR;
   int shfd = shm_open(SHMN, fl, mode);
   assert(shfd > 0);
 
-  err = ftruncate(shfd, PAGE_SIZE);
+  err = ftruncate(shfd, size);
   assert(!err);
 
   int prot = PROT_READ | PROT_WRITE;
   int flags = MAP_SHARED;
-  auto ptr = (char*)mmap(NULL, PAGE_SIZE, prot, flags, shfd, 0);
+  auto ptr = (char*)mmap(NULL, size, prot, flags, shfd, 0);
   assert(ptr != MAP_FAILED);
 
-  strncpy(ptr, msg, 11);
-  err = munmap(ptr, PAGE_SIZE);
+  strncpy(ptr, msg, size);
+  err = munmap(ptr, size);
   assert(!err);
 
-  err = sprintf(msg, "%d", 10);
+  char p[100] = {};
+  err = sprintf(p, "%d", size);
   assert(err >= 0);
 
-  send(err, wr, msg, 8);
+  send(err, wr, p, 8);
   assert(err >= 0);
 
   err = close(wr);

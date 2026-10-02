@@ -7,7 +7,6 @@
 #include <fcntl.h>
 
 const char * SHMN = "shm-temp";
-constexpr int PAGE_SIZE = 4096;
 
 size_t recv(int & err, int rd, char * b, size_t k)
 {
@@ -47,13 +46,13 @@ int main(int argc, char ** argv)
 
   int prot = PROT_READ;
   int flags = MAP_SHARED;
-  auto ptr = (char*)mmap(NULL, PAGE_SIZE, prot, flags, shfd, 0);
+  auto ptr = (char*)mmap(NULL, dt, prot, flags, shfd, 0);
   assert(ptr != MAP_FAILED);
 
   err = printf("%s", ptr);
   assert(err == dt);
 
-  err = munmap(ptr, PAGE_SIZE);
+  err = munmap(ptr, dt);
   assert(!err);
 
   err = close(shfd);
