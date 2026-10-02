@@ -1,19 +1,20 @@
 #include <assert.h>
-#include <unistd.h>
 #include <cstdio>
-#include <string>
-#include <sys/wait.h>
-#include <sys/mman.h>
+#include <cstdlib>
 #include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
-const char * SHMN = "shm-temp";
+const char * SHMN = "/shm-temp";
+constexpr size_t MAX_NUMBER_LEN = 100;
 
 size_t recv(int & err, int rd, char * b, size_t k)
 {
   size_t r = 0;
   while (r < k) {
     err = read(rd, b + r, k - r);
-    if (err < 0) {
+    if (err <= 0) {
       break;
     }
     r += err;
@@ -27,29 +28,29 @@ int main(int argc, char ** argv)
 
   int err = 0;
   int rd = std::atoi(argv[1]);
-  assert(rd > 0);
+  assert(rd >= 0);
 
-  char msg[100] = {};
-  recv(err, rd, msg, 8);
+  char p[MAX_NUMBER_LEN] = {};
+  recv(err, rd, p, MAX_NUMBER_LEN);
   assert(err > 0);
 
   err = close(rd);
   assert(!err);
 
-  int dt = std::atoi(msg);
+  int dt = std::atoi(p);
   assert(dt > 0);
 
   auto fl = O_RDONLY;
   auto mode = S_IRUSR | S_IWUSR;
   int shfd = shm_open(SHMN, fl, mode);
-  assert(shfd > 0);
+  assert(shfd >= 0);
 
   int prot = PROT_READ;
   int flags = MAP_SHARED;
   auto ptr = (char*)mmap(NULL, dt, prot, flags, shfd, 0);
   assert(ptr != MAP_FAILED);
 
-  err = printf("%s", ptr);
+  err = printf("%s\n", ptr);
   assert(err == dt);
 
   err = munmap(ptr, dt);

@@ -1,15 +1,16 @@
 #include <assert.h>
 #include <cstdio>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/mman.h>
-#include <fcntl.h>
 #include <cstring>
-#include <string>
+#include <fcntl.h>
 #include <iostream>
+#include <string>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-char msg[256] = "user data\n";
-const char * SHMN = "shm-temp";
+const char * SHMN = "/shm-temp";
+constexpr size_t MAX_NUMBER_LEN = 100;
 
 size_t send(int & err, int wr, const char * b, size_t k)
 {
@@ -43,21 +44,23 @@ int main()
     err = sprintf(p, "%d", rd);
     assert(err > 0);
 
-    execl("child", "clild", p, NULL);
+    execl("child", "child", p, NULL);
     assert(0);
   }
 
+  err = close(rd);
+  assert(!err);
+
   std::string text;
   std::getline(std::cin, text);
-  assert(text.size());
 
-  int size = text.length();
+  size_t size = text.length() + 1;
   const char * msg = text.c_str();
 
   auto fl = O_RDWR | O_CREAT | O_TRUNC;
   auto mode = S_IRUSR | S_IWUSR;
   int shfd = shm_open(SHMN, fl, mode);
-  assert(shfd > 0);
+  assert(shfd >= 0);
 
   err = ftruncate(shfd, size);
   assert(!err);
@@ -67,15 +70,15 @@ int main()
   auto ptr = (char*)mmap(NULL, size, prot, flags, shfd, 0);
   assert(ptr != MAP_FAILED);
 
-  strncpy(ptr, msg, size);
+  memcpy(ptr, msg, size);
   err = munmap(ptr, size);
   assert(!err);
 
-  char p[100] = {};
-  err = sprintf(p, "%d", size);
+  char p[MAX_NUMBER_LEN] = {};
+  err = sprintf(p, "%zu", size);
   assert(err >= 0);
 
-  send(err, wr, p, 8);
+  send(err, wr, p, MAX_NUMBER_LEN);
   assert(err >= 0);
 
   err = close(wr);
